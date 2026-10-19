@@ -1,0 +1,65 @@
+// Prisma Schema for Cafeteria API
+// Production-ready PostgreSQL configuration
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Producto {
+  id                  Int             @id @default(autoincrement())
+  nombre              String
+  precio              Decimal         @db.Decimal(10, 2)
+  categoria           String
+  estado              String          @default("activo") // 'activo' | 'inactivo' (Soft Delete)
+  fecha_actualizacion DateTime        @updatedAt
+  detalles            DetallePedido[]
+
+  @@map("productos")
+}
+
+model Pedido {
+  id              Int             @id @default(autoincrement())
+  nombre_cliente  String
+  origen          String          @default("anticuario")
+  total_calculado Decimal         @db.Decimal(10, 2)
+  estado          String          @default("pendiente") // 'pendiente' | 'preparando' | 'completado' | 'cancelado'
+  fecha_creacion  DateTime        @default(now())
+  detalles        DetallePedido[]
+  comision        Comision?
+
+  @@index([fecha_creacion])
+  @@map("pedidos")
+}
+
+model DetallePedido {
+  id                        Int      @id @default(autoincrement())
+  pedido_id                 Int
+  producto_id               Int
+  cantidad                  Int
+  precio_unitario_congelado Decimal  @db.Decimal(10, 2)
+
+  pedido                    Pedido   @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
+  producto                  Producto @relation(fields: [producto_id], references: [id], onDelete: Restrict)
+
+  @@index([pedido_id])
+  @@index([producto_id])
+  @@map("detalles_pedidos")
+}
+
+model Comision {
+  id                  Int      @id @default(autoincrement())
+  pedido_id           Int      @unique
+  porcentaje_aplicado Decimal  @default(10.00) @db.Decimal(5, 2)
+  monto_comision      Decimal  @db.Decimal(10, 2)
+  estado_pago         String   @default("pendiente") // 'pendiente' | 'pagado'
+  fecha_creacion      DateTime @default(now())
+
+  pedido              Pedido   @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
+
+  @@map("comisiones")
+}
